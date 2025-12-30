@@ -22,6 +22,11 @@ class BlackScholes:
     def _N(x: float) -> float:
         """Cumulative distribution function for standard normal distribution"""
         return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+    
+    def _n(x: float) -> float:
+        """Probability density function for standard normal distribution"""
+        return (1.0 / math.sqrt(2.0 * math.pi)) * math.exp(-0.5 * x * x)
+
 
     def price(self, p: BSParams, option_type: str = "call") -> float:
         S, K, T, r, sigma, q = p.S, p.K, p.T, p.r, p.sigma, p.q
@@ -53,3 +58,5 @@ class BlackScholes:
             return S * disc_q * self._N(d1) - K * disc_r * self._N(d2)
         else:
             return K * disc_r * self._N(-d2) - S * disc_q * self._N(-d1)
+        
+
