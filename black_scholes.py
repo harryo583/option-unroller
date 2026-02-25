@@ -1,22 +1,24 @@
 import math
 from typing import Dict, List, Tuple, Callable, Optional
-from dataclass import dataclass
-
+from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class BSParams:
-    S: float # stock price
-    K: float # strike price
-    T: float # time in years
-    r: float # continuously compounded risk-free rate
-    sigma: float # volatility
-    q: float # divident yield
-
+    S: float  # stock price
+    K: float  # strike price
+    T: float  # time in years
+    r: float  # continuously compounded risk-free rate
+    sigma: float  # volatility
+    q: float  # divident yield
 
 
 class BlackScholes:
+
+    GREEK_SPECS = Dict[str, List[Tuple[str, int]]] = {
+        "price": 
+    }
+
     def __init__(self):
-        
         pass
 
     def _N(x: float) -> float:
@@ -59,4 +61,3 @@ class BlackScholes:
         else:
             return K * disc_r * self._N(-d2) - S * disc_q * self._N(-d1)
         
-
