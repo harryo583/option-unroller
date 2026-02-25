@@ -5,7 +5,6 @@ DerivativeSpec = List[Tuple[str, int]]
 
 @dataclass(frozen=True)
 class Greek:
-    key: str  # stable internal id
-    label: str  # ui label
+    key: str  # greek id
     spec: DerivativeSpec  # [] for price (no derivatives)
-    theta_market: bool = False  # return -dP/dT instead of dP/dT if True
+    theta_market: bool = False  # if True return -dP/dT instead of dP/dT
