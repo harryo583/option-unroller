@@ -93,3 +93,26 @@ class BlackScholes:
             return disc_q * S * _norm_cdf(d1) - disc_r * K * _norm_cdf(d2)
         else:
             return disc_r * K * _norm_cdf(-d2) - disc_q * S * _norm_cdf(-d1)
+    
+
+    def _mixed_diff(self, base_state: Dict[str, float], spec: DerivativeSpec, price_from_state: Callable[[Dict[str, float]], float]) -> float:
+        """ Mixed partial calculation engine """
+        f = price_from_state
+
+        for var, ord in spec:
+            x0 = base_state[var]
+            h = step(x0, self.diff)
+
+            def make_new_f(prev_f, var_name, order, h_local):
+                def new_f(state):
+                    x = state[var_name]
+                    def one_d(z):
+                        st2 = dict(state)
+                        st2[var_name] = z
+                        return prev_f(st2)
+                    return finite_diff(one_d, x, order, config=self.diff, h=h_local)
+                return new_f
+            
+            f = make_new_f(f, var, ord, h)
+        
+        return f(base_state)
