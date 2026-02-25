@@ -74,4 +74,22 @@ class BlackScholes:
     
 
     def _price_value(self, c: Contract, m: Market) -> float:
-        pass
+        S, K, T, r, sigma, q = m.S, m.K, m.T, m.r, m.sigma, m.q 
+        opt = c.option_type.lower()
+
+        if T <= 0.0:
+            F = S * math.exp((r - 1) * T)
+            disc = math.exp(-r * T)
+            return disc * max(F - K, 0.0) if opt == "call" else disc * max(K - F, 0.0)
+        
+        sqrt_T = math.sqrt(T)
+        d1 = (math.log(S / K) + (r - q + 0.5 * sigma ** 2 ) * T) / (sigma * sqrt_T)
+        d2 = d1 - sigma * sqrt_T
+
+        disc_r = math.exp(-r * T)
+        disc_q = math.exp(-q * T)
+
+        if opt == "call":
+            return disc_q * S * _norm_cdf(d1) - disc_r * K * _norm_cdf(d2)
+        else:
+            return disc_r * K * _norm_cdf(-d2) - disc_q * S * _norm_cdf(-d1)
