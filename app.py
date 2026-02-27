@@ -127,8 +127,8 @@ else:
 with st.expander("Notes / gotchas", expanded=False):
     st.markdown(
         """
-- Theta here uses **market convention**: `theta = -dPrice/dT`.
-- Everything is computed via **finite differences** (your `pricing/diff.py`).
-- If you see noise for very high-order greeks (speed/ultima/etc), widen `rel_step` a bit.
-"""
+            - Theta here uses **market convention**: `theta = -dPrice/dT`.
+            - Everything is computed via **finite differences** (your `pricing/diff.py`).
+            - If you see noise for very high-order greeks (speed/ultima/etc), widen `rel_step` a bit.
+        """
     )
