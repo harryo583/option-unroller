@@ -2,8 +2,8 @@ import math
 from typing import Dict, List, Tuple, Callable, Optional, Iterable
 from dataclasses import dataclass, replace
 
-from pricing.diff import DiffConfig, finite_diff, step
-from pricing.metrics import Greek, DerivativeSpec
+from diff import DiffConfig, finite_diff, step
+from metrics import Greek, DerivativeSpec
 
 
 @dataclass(frozen=True)

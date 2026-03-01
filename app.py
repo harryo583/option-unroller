@@ -5,12 +5,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
 
-from pricing.black_scholes import BlackScholes, Market, Contract
+from black_scholes import BlackScholes, Market, Contract
 
 
-# -----------------------------
 # Page + theme
-# -----------------------------
 st.set_page_config(
     page_title="Option Greeks Plotter",
     page_icon="📈",
@@ -22,9 +20,7 @@ st.title("📈 Black–Scholes Greeks Plotter")
 st.caption("Finite-difference Greeks on top of your Black–Scholes engine.")
 
 
-# -----------------------------
 # Engine + registry
-# -----------------------------
 bs = BlackScholes()
 greeks = list(bs.greeks())
 greek_keys = [g.key for g in greeks]
@@ -256,8 +252,8 @@ with info_col:
 with st.expander("Notes / gotchas", expanded=False):
     st.markdown(
         """
-- **Theta convention:** `theta = -dPrice/dT` (market convention).
-- All metrics here use **finite differences** (`pricing/diff.py`).
-- If high-order greeks look noisy (speed/ultima/etc.), try widening your FD step sizes.
-"""
+            - **Theta convention:** `theta = -dPrice/dT` (market convention).
+            - All metrics here use **finite differences** (`pricing/diff.py`).
+            - If high-order greeks look noisy (speed/ultima/etc.), try widening your FD step sizes.
+        """
     )
