@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import numpy as np
-import matplotlib.pyplot as plt
 import streamlit as st
+import plotly.graph_objects as go
 
 from black_scholes import BlackScholes, Market, Contract
 
+# -----------------------------
 # Page + theme
+# -----------------------------
 st.set_page_config(
     page_title="Option Greeks Plotter",
     page_icon="📈",
@@ -18,8 +20,9 @@ st.set_page_config(
 st.title("📈 Black–Scholes Greeks Plotter")
 st.caption("Finite-difference Greeks on top of a Black–Scholes engine.")
 
-
+# -----------------------------
 # Engine + registry
+# -----------------------------
 bs = BlackScholes()
 greeks = list(bs.greeks())
 greek_keys = [g.key for g in greeks]
@@ -100,7 +103,7 @@ def metric_now(greek_key: str, c: Contract, m: Market) -> float:
 
 
 # -----------------------------
-# Sidebar controls (cleaner layout)
+# Sidebar controls
 # -----------------------------
 with st.sidebar:
     st.subheader("Inputs")
@@ -177,7 +180,6 @@ k5.metric("T", f"{T:.4f}")
 
 st.divider()
 
-
 # -----------------------------
 # Plot area (with spinner)
 # -----------------------------
@@ -205,26 +207,51 @@ with plot_col:
             n2=None if n2 is None else int(n2),
         )
 
-    fig = plt.figure()
     if mode == "1D line":
-        plt.plot(xs, ys)
-        plt.xlabel(x_var)
-        plt.ylabel(greek_key)
-        plt.title(f"{greek_key} vs {x_var}  ({option_type}, K={K:g}, T={T:g})")
-        plt.grid(True)
-    else:
-        im = plt.imshow(
-            Z,
-            aspect="auto",
-            origin="lower",
-            extent=[xs.min(), xs.max(), ys.min(), ys.max()],
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=xs,
+                y=ys,
+                mode="lines",
+                name=greek_key,
+                hovertemplate=f"{x_var}=%{{x:.6f}}<br>{greek_key}=%{{y:.6f}}<extra></extra>",
+            )
         )
-        plt.xlabel(x_var)
-        plt.ylabel(y_var)
-        plt.title(f"{greek_key} heatmap  ({option_type}, base K={K:g}, base T={T:g})")
-        plt.colorbar(im)
+        fig.update_layout(
+            title=f"{greek_key} vs {x_var}  ({option_type}, K={K:g}, T={T:g})",
+            xaxis_title=x_var,
+            yaxis_title=greek_key,
+            hovermode="x",
+            margin=dict(l=10, r=10, t=50, b=10),
+        )
+        fig.update_xaxes(showgrid=True)
+        fig.update_yaxes(showgrid=True)
 
-    st.pyplot(fig, clear_figure=True, use_container_width=True)
+        # scrollZoom=True enables mouse-wheel zoom
+        st.plotly_chart(fig, use_container_width=True, config={"scrollZoom": True})
+
+    else:
+        # Heatmap: Z[j, i] corresponds to (ys[j], xs[i])
+        fig = go.Figure(
+            data=go.Heatmap(
+                x=xs,
+                y=ys,
+                z=Z,
+                colorbar=dict(title=greek_key),
+                hovertemplate=f"{x_var}=%{{x:.6f}}<br>{y_var}=%{{y:.6f}}<br>{greek_key}=%{{z:.6f}}<extra></extra>",
+            )
+        )
+        fig.update_layout(
+            title=f"{greek_key} heatmap  ({option_type}, base K={K:g}, base T={T:g})",
+            xaxis_title=x_var,
+            yaxis_title=y_var,
+            margin=dict(l=10, r=10, t=50, b=10),
+        )
+        fig.update_xaxes(showgrid=True)
+        fig.update_yaxes(showgrid=True)
+
+        st.plotly_chart(fig, use_container_width=True, config={"scrollZoom": True})
 
 
 with info_col:
@@ -251,8 +278,8 @@ with info_col:
 with st.expander("Notes / gotchas", expanded=False):
     st.markdown(
         """
-            - **Theta convention:** `theta = -dPrice/dT` (market convention).
-            - All metrics here use **finite differences** (`pricing/diff.py`).
-            - If high-order greeks look noisy (speed/ultima/etc.), try widening your FD step sizes.
+        - **Theta convention:** `theta = -dPrice/dT` (market convention).
+        - All metrics here use **finite differences**.
+        - If high-order greeks look noisy (speed/ultima/etc.), try widening your FD step sizes.
         """
     )
