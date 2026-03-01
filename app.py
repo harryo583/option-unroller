@@ -7,7 +7,6 @@ import streamlit as st
 
 from black_scholes import BlackScholes, Market, Contract
 
-
 # Page + theme
 st.set_page_config(
     page_title="Option Greeks Plotter",
@@ -17,7 +16,7 @@ st.set_page_config(
 )
 
 st.title("📈 Black–Scholes Greeks Plotter")
-st.caption("Finite-difference Greeks on top of your Black–Scholes engine.")
+st.caption("Finite-difference Greeks on top of a Black–Scholes engine.")
 
 
 # Engine + registry
