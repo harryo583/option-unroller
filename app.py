@@ -1,15 +1,15 @@
 # app.py
+
 from __future__ import annotations
 
 import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
 
-from black_scholes import BlackScholes, Market, Contract
+from pricing import BlackScholes, Market, Contract
 
-# -----------------------------
+
 # Page + theme
-# -----------------------------
 st.set_page_config(
     page_title="Option Greeks Plotter",
     page_icon="📈",
@@ -20,9 +20,7 @@ st.set_page_config(
 st.title("📈 Black–Scholes Greeks Plotter")
 st.caption("Finite-difference Greeks on top of a Black–Scholes engine.")
 
-# -----------------------------
 # Engine + registry
-# -----------------------------
 bs = BlackScholes()
 greeks = list(bs.greeks())
 greek_keys = [g.key for g in greeks]
@@ -102,9 +100,7 @@ def metric_now(greek_key: str, c: Contract, m: Market) -> float:
     return bs.metric(greek_by_key[greek_key], c, m)
 
 
-# -----------------------------
 # Sidebar controls
-# -----------------------------
 with st.sidebar:
     st.subheader("Inputs")
 
@@ -162,9 +158,7 @@ with st.sidebar:
     st.caption("Tip: for noisy higher-order greeks, increase your FD step sizes.")
 
 
-# -----------------------------
 # Derived objects + KPIs
-# -----------------------------
 base_contract = Contract(K=K, T=T, option_type=option_type)
 base_market = Market(S=S, r=r, sigma=sigma, q=q)
 
@@ -180,9 +174,7 @@ k5.metric("T", f"{T:.4f}")
 
 st.divider()
 
-# -----------------------------
 # Plot area (with spinner)
-# -----------------------------
 plot_col, info_col = st.columns([3.2, 1.2], gap="large")
 
 with plot_col:
