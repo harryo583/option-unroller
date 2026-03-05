@@ -1,7 +1,6 @@
-# types.py
+# pricing/types.py
 
 from dataclasses import dataclass, replace
-
 from .diff import DerivativeSpec
 
 

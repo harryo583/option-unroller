@@ -1,4 +1,4 @@
-# black_scholes.py
+# pricing/black_scholes.py
 
 import math
 from typing import Dict, Callable, Iterable

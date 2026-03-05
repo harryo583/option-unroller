@@ -1,18 +1,16 @@
 # app.py
 
-from __future__ import annotations
-
 import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
-
+from __future__ import annotations
 from pricing import BlackScholes, Market, Contract
 
 
 # Page + theme
 st.set_page_config(
     page_title="Option Visualizer",
-    # page_icon="⚙️",
+    page_icon="⚙️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
