@@ -1,9 +1,8 @@
 # types.py
 
-import math
 from dataclasses import dataclass, replace
 
-from .diff import DerivativeSpec, DiffConfig
+from .diff import DerivativeSpec
 
 
 @dataclass(frozen=True)

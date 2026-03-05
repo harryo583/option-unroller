@@ -4,8 +4,8 @@ from typing import List, Tuple, Callable, Optional
 from dataclasses import dataclass
 
 
-
 DerivativeSpec = List[Tuple[str, int]]
+
 
 @dataclass(frozen=True)
 class DiffConfig:

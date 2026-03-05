@@ -1,7 +1,7 @@
 # black_scholes.py
 
 import math
-from typing import Dict, List, Tuple, Callable, Optional, Iterable
+from typing import Dict, Callable, Iterable
 from .diff import DiffConfig, DerivativeSpec, step, finite_diff
 from .types import Greek, Contract, Market
 
@@ -50,9 +50,7 @@ class BlackScholes:
             self.speed, self.color, self.ultima, self.zomma
         ]
 
-    # -----------------------------
     # Core pricing function
-    # -----------------------------
     def _price_value(self, c: Contract, m: Market) -> float:
         S, K, T, r, sigma, q = m.S, c.K, c.T, m.r, m.sigma, m.q
         opt = c.option_type.lower().strip()
@@ -88,9 +86,7 @@ class BlackScholes:
         else:
             return disc_r * K * _norm_cdf(-d2) - disc_q * S * _norm_cdf(-d1)
 
-    # -----------------------------
     # Mixed partial engine
-    # -----------------------------
     def _base_state(self, c: Contract, m: Market) -> Dict[str, float]:
         return {
             "S": float(m.S),
@@ -141,9 +137,7 @@ class BlackScholes:
 
         return float(f(base_state))
 
-    # -----------------------------
     # Public API
-    # -----------------------------
     def metric(self, greek: Greek, c: Contract, m: Market) -> float:
         base = self._base_state(c, m)
         opt = c.option_type.lower().strip()

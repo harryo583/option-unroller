@@ -11,13 +11,13 @@ from pricing import BlackScholes, Market, Contract
 
 # Page + theme
 st.set_page_config(
-    page_title="Option Greeks Plotter",
-    page_icon="📈",
+    page_title="Option Visualizer",
+    # page_icon="⚙️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-st.title("📈 Black–Scholes Greeks Plotter")
+st.title("⚙️ Black–Scholes Visualizer")
 st.caption("Finite-difference Greeks on top of a Black–Scholes engine.")
 
 # Engine + registry
@@ -27,7 +27,6 @@ greek_keys = [g.key for g in greeks]
 greek_by_key = {g.key: g for g in greeks}
 
 VARS_ALL = ["S", "sigma", "T", "r", "q", "K"]
-
 
 @st.cache_data(show_spinner=False)
 def compute_grid(
@@ -220,7 +219,7 @@ with plot_col:
         fig.update_xaxes(showgrid=True)
         fig.update_yaxes(showgrid=True)
 
-        # scrollZoom=True enables mouse-wheel zoom
+        # scrollZoom = True enables mouse-wheel zoom
         st.plotly_chart(fig, use_container_width=True, config={"scrollZoom": True})
 
     else:
