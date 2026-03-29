@@ -1,9 +1,10 @@
 # app.py
 
+from __future__ import annotations
+
 import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
-from __future__ import annotations
 from pricing import BlackScholes, Market, Contract
 
 

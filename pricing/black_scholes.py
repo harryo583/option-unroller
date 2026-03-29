@@ -52,6 +52,39 @@ class BlackScholes:
 
     # Core pricing function
     def _price_value(self, c: Contract, m: Market) -> float:
+        """
+        Closed-form Black-Scholes price for a European call/put with dividend yield.
+
+        Implements the standard formula with continuous dividend yield q:
+          C = e^{-qT} S Φ(d1) - e^{-rT} K Φ(d2)
+          P = e^{-rT} K Φ(-d2) - e^{-qT} S Φ(-d1)
+
+        Where:
+          d1 = [ln(S/K) + (r - q + 0.5 σ^2) T] / (σ sqrt(T))
+          d2 = d1 - σ sqrt(T)
+
+        Edge cases handled
+        ------------------
+        - Invalid option_type -> ValueError
+        - T <= 0:
+            Treat as expired: intrinsic value max(S-K,0) or max(K-S,0)
+        - sigma <= 0:
+            Degenerate (deterministic) case:
+              * Under risk-neutral dynamics with drift (r-q), forward is:
+                    F = S * exp((r - q) T)
+              * Price becomes discounted intrinsic on the forward:
+                    disc * max(F-K, 0)  (call)
+                    disc * max(K-F, 0)  (put)
+
+        Parameters
+        ----------
+        c: contract (K, T, call/put).
+        m: market (S, r, sigma, q).
+
+        Returns
+        -------
+        Option present value (floating point).
+        """
         S, K, T, r, sigma, q = m.S, c.K, c.T, m.r, m.sigma, m.q
         opt = c.option_type.lower().strip()
 
@@ -110,9 +143,40 @@ class BlackScholes:
     ) -> float:
         """
         Applies derivatives in sequence by wrapping the function.
-        Each step creates a new function that, when called on a state,
-        computes the requested partial derivative w.r.t. one variable.
+        Each step creates a new function that, when called on a state, computes the 
+        requested partial derivative wrt one variable.
+
+        Implements the standard formula with continuous dividend yield q:
+          C = e^{-qT} S Φ(d1) - e^{-rT} K Φ(d2)
+          P = e^{-rT} K Φ(-d2) - e^{-qT} S Φ(-d1)
+
+        Where:
+          d1 = [ln(S/K) + (r - q + 0.5 σ^2) T] / (σ sqrt(T))
+          d2 = d1 - σ sqrt(T)
+
+        Edge cases handled
+        ------------------
+        - Invalid option_type -> ValueError
+        - T <= 0:
+            Treat as expired: intrinsic value max(S-K,0) or max(K-S,0)
+        - sigma <= 0:
+            Degenerate (deterministic) case:
+              * Under risk-neutral dynamics with drift (r-q), forward is:
+                    F = S * exp((r - q) T)
+              * Price becomes discounted intrinsic on the forward:
+                    disc * max(F-K, 0)  (call)
+                    disc * max(K-F, 0)  (put)
+
+        Parameters
+        ----------
+        c: contract (K, T, call/put).
+        m: market (S, r, sigma, q).
+
+        Returns
+        -------
+        Option present value (floating point).
         """
+
         f = price_from_state
 
         for var_name, order in spec:

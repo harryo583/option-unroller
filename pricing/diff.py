@@ -4,7 +4,6 @@ from typing import List, Tuple, Callable, Optional
 from dataclasses import dataclass
 
 
-
 DerivativeSpec = List[Tuple[str, int]]
 
 
@@ -31,7 +30,7 @@ def step(x: float, config: DiffConfig) -> float:
 def finite_diff(f: Callable[[float], float], x0: float, order: int, config: DiffConfig, h: Optional[float] = None) -> float:
     """
     Numerically approximates the nth derivative of f at x0 with central differences f^(n)(x0).
-    
+
     Parameters
     ----------
     f: scalar function f(x) to differentiate.
