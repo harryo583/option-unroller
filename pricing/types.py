@@ -7,9 +7,9 @@ from .diff import DerivativeSpec
 @dataclass(frozen=True)
 class Market:
     S: float  # spot
-    r: float  # risk-free rate (cc)
-    sigma: float  # vol
-    q: float = 0.0  # dividend yield (cc)
+    r: float  # risk-free rate
+    sigma: float  # volatility
+    q: float = 0.0  # dividend yield
 
     def with_(self, **kwargs) -> "Market":
         return replace(self, **kwargs)
@@ -17,7 +17,7 @@ class Market:
 
 @dataclass(frozen=True)
 class Contract:
-    K: float
+    K: float  # strike price
     T: float  # time to expiry in years
     option_type: str  # "call" or "put"
 
@@ -29,4 +29,4 @@ class Contract:
 class Greek:
     key: str  # greek id
     spec: DerivativeSpec  # [] for price (no derivatives)
-    theta_market: bool = False  # if True return -dP/dT instead of dP/dT
+    theta_market: bool = False  # if True returns -dP/dT instead of dP/dT

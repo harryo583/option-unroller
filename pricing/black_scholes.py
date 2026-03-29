@@ -34,19 +34,24 @@ class BlackScholes:
         # Second order
         self.vanna = Greek("vanna", [("S", 1), ("sigma", 1)])
         self.volga = Greek("volga", [("sigma", 2)])  # aka vomma
-        self.charm = Greek("charm", [("S", 1), ("T", 1)], theta_market=True)
-        self.vega_decay = Greek("vega_decay", [("sigma", 1), ("T", 1)], theta_market=True)
+        self.charm = Greek("charm", [("S", 1), ("T", 1)], theta_market=True)  # delta decay
+        self.veta = Greek("veta", [("sigma", 1), ("T", 1)], theta_market=True)  # vega_decay
 
         # Third order
         self.speed = Greek("speed", [("S", 3)])
-        self.color = Greek("color", [("S", 2), ("T", 1)], theta_market=True)
+        self.color = Greek("color", [("S", 2), ("T", 1)], theta_market=True)  # gamma decay
         self.ultima = Greek("ultima", [("sigma", 3)])
         self.zomma = Greek("zomma", [("S", 2), ("sigma", 1)])
+        
+        # Acronyms
+        self.delta_decay = self.charm
+        self.vega_decay = self.veta
+        self.gamma_decay = self.color
 
     def greeks(self) -> Iterable[Greek]:
         return [
             self.price, self.delta, self.gamma, self.vega, self.theta, self.rho,
-            self.vanna, self.volga, self.charm, self.vega_decay,
+            self.vanna, self.volga, self.charm, self.veta,
             self.speed, self.color, self.ultima, self.zomma
         ]
 
@@ -83,7 +88,7 @@ class BlackScholes:
 
         Returns
         -------
-        Option present value (floating point).
+        Option present value (float).
         """
         S, K, T, r, sigma, q = m.S, c.K, c.T, m.r, m.sigma, m.q
         opt = c.option_type.lower().strip()
@@ -98,8 +103,8 @@ class BlackScholes:
             else:
                 return max(K - S, 0.0)
 
+        # Deterministic forward under risk-neutral drift (r - q)
         if sigma <= 0.0:
-            # Deterministic forward under risk-neutral drift (r - q)
             F = S * math.exp((r - q) * T)
             disc = math.exp(-r * T)
             if opt == "call":
@@ -145,36 +150,6 @@ class BlackScholes:
         Applies derivatives in sequence by wrapping the function.
         Each step creates a new function that, when called on a state, computes the 
         requested partial derivative wrt one variable.
-
-        Implements the standard formula with continuous dividend yield q:
-          C = e^{-qT} S Φ(d1) - e^{-rT} K Φ(d2)
-          P = e^{-rT} K Φ(-d2) - e^{-qT} S Φ(-d1)
-
-        Where:
-          d1 = [ln(S/K) + (r - q + 0.5 σ^2) T] / (σ sqrt(T))
-          d2 = d1 - σ sqrt(T)
-
-        Edge cases handled
-        ------------------
-        - Invalid option_type -> ValueError
-        - T <= 0:
-            Treat as expired: intrinsic value max(S-K,0) or max(K-S,0)
-        - sigma <= 0:
-            Degenerate (deterministic) case:
-              * Under risk-neutral dynamics with drift (r-q), forward is:
-                    F = S * exp((r - q) T)
-              * Price becomes discounted intrinsic on the forward:
-                    disc * max(F-K, 0)  (call)
-                    disc * max(K-F, 0)  (put)
-
-        Parameters
-        ----------
-        c: contract (K, T, call/put).
-        m: market (S, r, sigma, q).
-
-        Returns
-        -------
-        Option present value (floating point).
         """
 
         f = price_from_state
