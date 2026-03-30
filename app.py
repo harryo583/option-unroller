@@ -1,97 +1,249 @@
+
 from __future__ import annotations
 
+import copy
+from typing import Any
+
 import numpy as np
-import streamlit as st
+import pandas as pd
 import plotly.graph_objects as go
-from pricing import BlackScholes, Market, Contract
+import streamlit as st
+from pricing import BlackScholes, Contract, Market
 
 
-# Page + theme
+# =========================================================
+# Page config
+# =========================================================
 st.set_page_config(
-    page_title="Option Visualizer",
+    page_title="Option Portfolio Visualizer",
     page_icon="⚙️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 st.title("⚙️ Black–Scholes Portfolio Visualizer")
-st.caption("Finite-difference Greeks on top of a Black–Scholes engine.")
+st.caption("Build arbitrary stock / option portfolios, inspect Greeks, and visualize payoff + sensitivities.")
 
+
+# =========================================================
 # Engine + registry
+# =========================================================
 bs = BlackScholes()
 greeks = list(bs.greeks())
 greek_keys = [g.key for g in greeks]
 greek_by_key = {g.key: g for g in greeks}
+METRICS_ALL = ["price"] + greek_keys
 
-VARS_ALL = ["S", "sigma", "T", "r", "q", "K"]
+
+# =========================================================
+# Session state helpers
+# =========================================================
+def ensure_state() -> None:
+    if "portfolio_legs" not in st.session_state:
+        st.session_state.portfolio_legs = [
+            {
+                "name": "Underlying",
+                "type": "stock",
+                "qty": 100.0,
+            },
+            {
+                "name": "Short Call",
+                "type": "call",
+                "qty": -1.0,
+                "K": 105.0,
+                "T": 0.25,
+            },
+        ]
 
 
+def default_leg(index: int) -> dict[str, Any]:
+    return {
+        "name": f"Leg {index + 1}",
+        "type": "call",
+        "qty": 1.0,
+        "K": 100.0,
+        "T": 0.25,
+    }
+
+
+def add_leg(leg: dict[str, Any] | None = None) -> None:
+    legs = st.session_state.portfolio_legs
+    legs.append(copy.deepcopy(leg) if leg is not None else default_leg(len(legs)))
+
+
+def delete_leg(idx: int) -> None:
+    legs = st.session_state.portfolio_legs
+    if len(legs) > 1:
+        del legs[idx]
+
+
+def set_portfolio(legs: list[dict[str, Any]]) -> None:
+    st.session_state.portfolio_legs = copy.deepcopy(legs)
+
+
+ensure_state()
+
+
+# =========================================================
+# Strategy presets
+# =========================================================
+PRESET_STRATEGIES: dict[str, list[dict[str, Any]]] = {
+    "Covered Call": [
+        {"name": "Long Stock", "type": "stock", "qty": 100.0},
+        {"name": "Short Call", "type": "call", "qty": -1.0, "K": 105.0, "T": 0.25},
+    ],
+    "Bull Call Spread": [
+        {"name": "Long Lower Call", "type": "call", "qty": 1.0, "K": 95.0, "T": 0.25},
+        {"name": "Short Upper Call", "type": "call", "qty": -1.0, "K": 105.0, "T": 0.25},
+    ],
+    "Long Straddle": [
+        {"name": "Long Call", "type": "call", "qty": 1.0, "K": 100.0, "T": 0.25},
+        {"name": "Long Put", "type": "put", "qty": 1.0, "K": 100.0, "T": 0.25},
+    ],
+    "Long Strangle": [
+        {"name": "Long Put", "type": "put", "qty": 1.0, "K": 95.0, "T": 0.25},
+        {"name": "Long Call", "type": "call", "qty": 1.0, "K": 105.0, "T": 0.25},
+    ],
+    "Iron Condor": [
+        {"name": "Long Put Wing", "type": "put", "qty": 1.0, "K": 90.0, "T": 0.25},
+        {"name": "Short Put", "type": "put", "qty": -1.0, "K": 95.0, "T": 0.25},
+        {"name": "Short Call", "type": "call", "qty": -1.0, "K": 105.0, "T": 0.25},
+        {"name": "Long Call Wing", "type": "call", "qty": 1.0, "K": 110.0, "T": 0.25},
+    ],
+}
+
+
+# =========================================================
+# Pricing helpers
+# =========================================================
 def stock_metric(greek_key: str, market: Market) -> float:
     """
-    Greeks for a stock position under this app's conventions.
-    Price = S
-    Delta = 1
-    All other higher derivatives default to 0 unless you want
-    to explicitly define rate/dividend carry sensitivities differently.
+    Return the chosen metric for one share of stock.
     """
     if greek_key == "price":
-        return market.S
+        return float(market.S)
     if greek_key == "delta":
         return 1.0
     return 0.0
 
 
-def leg_metric(
-    greek_key: str,
-    leg_type: str,
-    qty: float,
-    K: float | None,
-    T: float | None,
-    market: Market,
-) -> float:
+def stock_payoff_at_expiry(spot_at_expiry: float) -> float:
+    return float(spot_at_expiry)
+
+
+def option_payoff_at_expiry(option_type: str, K: float, spot_at_expiry: float) -> float:
+    if option_type == "call":
+        return max(float(spot_at_expiry) - float(K), 0.0)
+    if option_type == "put":
+        return max(float(K) - float(spot_at_expiry), 0.0)
+    raise KeyError(option_type)
+
+
+def leg_metric(greek_key: str, leg: dict[str, Any], market: Market) -> float:
     """
-    Value one portfolio leg.
-    leg_type: 'stock', 'call', or 'put'
+    Return quantity-adjusted Black-Scholes metric for a single leg.
     """
+    leg_type = leg["type"]
+    qty = float(leg["qty"])
+
     if leg_type == "stock":
-        base_val = stock_metric(greek_key, market)
-        return qty * base_val
+        return qty * stock_metric(greek_key, market)
 
-    assert K is not None and T is not None
-    c = Contract(K=K, T=T, option_type=leg_type)
-    g = bs.price if greek_key == "price" else greek_by_key[greek_key]
-    base_val = bs.metric(g, c, market)
-    return qty * base_val
+    c = Contract(
+        K=float(leg["K"]),
+        T=max(float(leg["T"]), 1e-12),
+        option_type=leg_type,
+    )
+    spec = bs.price if greek_key == "price" else greek_by_key[greek_key]
+    return qty * float(bs.metric(spec, c, market))
 
 
-def portfolio_metric(
-    greek_key: str,
-    portfolio_legs: list[dict],
+def portfolio_metric(greek_key: str, portfolio_legs: list[dict[str, Any]], market: Market) -> float:
+    return float(sum(leg_metric(greek_key, leg, market) for leg in portfolio_legs))
+
+
+def leg_payoff_at_expiry(leg: dict[str, Any], spot_at_expiry: float) -> float:
+    qty = float(leg["qty"])
+    leg_type = leg["type"]
+
+    if leg_type == "stock":
+        return qty * stock_payoff_at_expiry(spot_at_expiry)
+
+    return qty * option_payoff_at_expiry(leg_type, float(leg["K"]), spot_at_expiry)
+
+
+def portfolio_payoff_at_expiry(portfolio_legs: list[dict[str, Any]], spot_at_expiry: float) -> float:
+    return float(sum(leg_payoff_at_expiry(leg, spot_at_expiry) for leg in portfolio_legs))
+
+
+def unique_maturities(legs: list[dict[str, Any]]) -> list[float]:
+    ts = sorted({float(leg["T"]) for leg in legs if leg["type"] != "stock"})
+    return ts if ts else [0.25]
+
+
+def build_plot_targets(legs: list[dict[str, Any]]) -> list[str]:
+    """
+    Global market variables + per-leg K/T selectors.
+    """
+    targets = ["S", "sigma", "r", "q"]
+    for i, leg in enumerate(legs):
+        name = leg.get("name", f"Leg {i + 1}") or f"Leg {i + 1}"
+        if leg["type"] != "stock":
+            targets.append(f"leg_{i + 1}_K ({name})")
+            targets.append(f"leg_{i + 1}_T ({name})")
+    return targets
+
+
+def apply_plot_variable(
     market: Market,
-) -> float:
-    total = 0.0
-    for leg in portfolio_legs:
-        total += leg_metric(
-            greek_key=greek_key,
-            leg_type=leg["type"],
-            qty=leg["qty"],
-            K=leg.get("K"),
-            T=leg.get("T"),
-            market=market,
-        )
-    return total
+    portfolio_legs: list[dict[str, Any]],
+    var: str,
+    value: float,
+) -> tuple[Market, list[dict[str, Any]]]:
+    """
+    Return a new (market, legs) pair after applying one plot variable change.
+    """
+    new_market = market
+    new_legs = [dict(leg) for leg in portfolio_legs]
+
+    if var == "S":
+        new_market = market.with_(S=float(value))
+    elif var == "sigma":
+        new_market = market.with_(sigma=max(float(value), 0.0))
+    elif var == "r":
+        new_market = market.with_(r=float(value))
+    elif var == "q":
+        new_market = market.with_(q=float(value))
+    elif var.startswith("leg_"):
+        prefix, field_part = var.split("_", 2)
+        # field_part looks like "1_K (Name)" or "2_T (Name)"
+        leg_idx_str, rest = field_part.split("_", 1)
+        leg_idx = int(leg_idx_str) - 1
+        field = rest.split(" ", 1)[0]  # "K" or "T"
+        if field not in {"K", "T"}:
+            raise KeyError(var)
+        if not (0 <= leg_idx < len(new_legs)):
+            raise IndexError(var)
+        if new_legs[leg_idx]["type"] == "stock":
+            return new_market, new_legs
+        if field == "K":
+            new_legs[leg_idx]["K"] = max(float(value), 1e-12)
+        else:
+            new_legs[leg_idx]["T"] = max(float(value), 0.0)
+    else:
+        raise KeyError(var)
+
+    return new_market, new_legs
 
 
 @st.cache_data(show_spinner=False)
-def compute_grid(
+def compute_metric_grid(
     greek_key: str,
-    portfolio_legs: list[dict],
-    # base market params
+    portfolio_legs: list[dict[str, Any]],
     S: float,
     sigma: float,
     r: float,
     q: float,
-    # plot params
     mode: str,
     x_var: str,
     x_min: float,
@@ -102,43 +254,13 @@ def compute_grid(
     y_max: float | None = None,
     n2: int | None = None,
 ):
-    """
-    Compute either 1D line (xs, ys) or 2D heatmap (xs, ys, Z)
-    for the WHOLE portfolio.
-    """
-    base_market = Market(S=S, r=r, sigma=sigma, q=q)
-
-    def with_var(market: Market, legs: list[dict], var: str, value: float):
-        new_market = market
-        new_legs = [dict(leg) for leg in legs]
-
-        if var == "S":
-            new_market = market.with_(S=value)
-        elif var == "sigma":
-            new_market = market.with_(sigma=value)
-        elif var == "r":
-            new_market = market.with_(r=value)
-        elif var == "q":
-            new_market = market.with_(q=value)
-        elif var == "T":
-            for leg in new_legs:
-                if leg["type"] != "stock":
-                    leg["T"] = value
-        elif var == "K":
-            for leg in new_legs:
-                if leg["type"] != "stock":
-                    leg["K"] = value
-        else:
-            raise KeyError(var)
-
-        return new_market, new_legs
-
+    base_market = Market(S=float(S), r=float(r), sigma=float(sigma), q=float(q))
     xs = np.linspace(float(x_min), float(x_max), int(n))
 
     if mode == "1D line":
         ys = np.empty_like(xs, dtype=float)
         for i, xv in enumerate(xs):
-            m_i, legs_i = with_var(base_market, portfolio_legs, x_var, float(xv))
+            m_i, legs_i = apply_plot_variable(base_market, portfolio_legs, x_var, float(xv))
             ys[i] = portfolio_metric(greek_key, legs_i, m_i)
         return xs, ys, None
 
@@ -148,67 +270,115 @@ def compute_grid(
 
     for j, yv in enumerate(ys):
         for i, xv in enumerate(xs):
-            m1, legs1 = with_var(base_market, portfolio_legs, x_var, float(xv))
-            m2, legs2 = with_var(m1, legs1, y_var, float(yv))
+            m1, legs1 = apply_plot_variable(base_market, portfolio_legs, x_var, float(xv))
+            m2, legs2 = apply_plot_variable(m1, legs1, y_var, float(yv))
             Z[j, i] = portfolio_metric(greek_key, legs2, m2)
 
     return xs, ys, Z
 
 
+@st.cache_data(show_spinner=False)
+def compute_payoff_curve(
+    portfolio_legs: list[dict[str, Any]],
+    x_min: float,
+    x_max: float,
+    n: int,
+    premium: float,
+):
+    xs = np.linspace(float(x_min), float(x_max), int(n))
+    gross = np.array([portfolio_payoff_at_expiry(portfolio_legs, x) for x in xs], dtype=float)
+    pnl = gross - float(premium)
+    return xs, gross, pnl
+
+
+# =========================================================
 # Sidebar controls
+# =========================================================
 with st.sidebar:
-    st.subheader("Inputs")
+    st.subheader("Portfolio Builder")
 
-    with st.expander("Portfolio", expanded=True):
-        n_legs = st.number_input("Number of legs", min_value=1, max_value=12, value=2, step=1)
+    with st.expander("Strategy presets", expanded=True):
+        preset_names = ["Custom"] + list(PRESET_STRATEGIES.keys())
+        selected_preset = st.selectbox("Load preset", preset_names, index=0)
 
-        portfolio_legs = []
-        for i in range(int(n_legs)):
+        c_p1, c_p2 = st.columns(2)
+        with c_p1:
+            if st.button("Apply preset", use_container_width=True, disabled=(selected_preset == "Custom")):
+                set_portfolio(PRESET_STRATEGIES[selected_preset])
+                st.rerun()
+        with c_p2:
+            if st.button("Add new leg", use_container_width=True):
+                add_leg()
+                st.rerun()
+
+    with st.expander("Portfolio legs", expanded=True):
+        legs = st.session_state.portfolio_legs
+
+        for i, leg in enumerate(legs):
             st.markdown(f"**Leg {i + 1}**")
-            c1, c2, c3 = st.columns([1.2, 1, 1])
+            c_top1, c_top2 = st.columns([3.0, 1.1])
 
+            with c_top1:
+                leg["name"] = st.text_input(
+                    f"Name #{i + 1}",
+                    value=leg.get("name", f"Leg {i + 1}"),
+                    key=f"name_{i}",
+                )
+
+            with c_top2:
+                delete_disabled = len(legs) == 1
+                if st.button("Delete", key=f"delete_{i}", use_container_width=True, disabled=delete_disabled):
+                    delete_leg(i)
+                    st.rerun()
+
+            c1, c2 = st.columns(2)
             with c1:
-                leg_type = st.selectbox(
-                    f"Type #{i+1}",
+                current_type = ["stock", "call", "put"].index(leg["type"])
+                leg["type"] = st.selectbox(
+                    f"Type #{i + 1}",
                     ["stock", "call", "put"],
-                    index=0 if i == 0 else 1,
+                    index=current_type,
                     key=f"type_{i}",
                 )
             with c2:
-                qty = st.number_input(
-                    f"Qty #{i+1}",
-                    value=1.0,
-                    step=1.0,
-                    key=f"qty_{i}",
-                )
-            with c3:
-                st.write("")
-                st.write("")
-
-            leg = {"type": leg_type, "qty": float(qty)}
-
-            if leg_type != "stock":
-                c4, c5 = st.columns(2)
-                with c4:
-                    K = st.number_input(
-                        f"Strike K #{i+1}",
-                        value=100.0,
-                        min_value=0.0001,
+                leg["qty"] = float(
+                    st.number_input(
+                        f"Quantity #{i + 1}",
+                        value=float(leg.get("qty", 1.0)),
                         step=1.0,
-                        key=f"K_{i}",
+                        key=f"qty_{i}",
+                        help="Use negative quantity for short positions.",
                     )
-                with c5:
-                    T = st.number_input(
-                        f"Expiry T #{i+1}",
-                        value=0.25,
-                        min_value=0.0,
-                        step=0.01,
-                        key=f"T_{i}",
-                    )
-                leg["K"] = float(K)
-                leg["T"] = float(T)
+                )
 
-            portfolio_legs.append(leg)
+            if leg["type"] != "stock":
+                leg.setdefault("K", 100.0)
+                leg.setdefault("T", 0.25)
+                c3, c4 = st.columns(2)
+                with c3:
+                    leg["K"] = float(
+                        st.number_input(
+                            f"Strike K #{i + 1}",
+                            min_value=0.0001,
+                            value=float(leg.get("K", 100.0)),
+                            step=1.0,
+                            key=f"K_{i}",
+                        )
+                    )
+                with c4:
+                    leg["T"] = float(
+                        st.number_input(
+                            f"Expiry T #{i + 1}",
+                            min_value=0.0,
+                            value=float(leg.get("T", 0.25)),
+                            step=0.01,
+                            key=f"T_{i}",
+                        )
+                    )
+            else:
+                leg.pop("K", None)
+                leg.pop("T", None)
+
             st.markdown("---")
 
     with st.expander("Market", expanded=True):
@@ -217,167 +387,258 @@ with st.sidebar:
         r = st.number_input("Rate (r)", value=0.03, step=0.005, format="%.4f")
         q = st.number_input("Dividend (q)", value=0.00, step=0.005, format="%.4f")
 
-    with st.expander("Plot", expanded=True):
+    plot_targets = build_plot_targets(st.session_state.portfolio_legs)
+
+    with st.expander("Sensitivity plot", expanded=True):
         greek_key = st.selectbox(
             "Metric",
-            ["price"] + greek_keys,
-            index=(["price"] + greek_keys).index("delta") if "delta" in greek_keys else 0,
+            METRICS_ALL,
+            index=METRICS_ALL.index("delta") if "delta" in METRICS_ALL else 0,
         )
         mode = st.segmented_control("Mode", options=["1D line", "2D heatmap"], default="1D line")
 
-        c1, c2 = st.columns(2)
-        with c1:
-            x_var = st.selectbox("X variable", VARS_ALL, index=VARS_ALL.index("S"))
-        with c2:
-            n = st.slider("X points", min_value=25, max_value=400, value=150)
+        c5, c6 = st.columns(2)
+        with c5:
+            x_var = st.selectbox("X variable", plot_targets, index=0)
+        with c6:
+            n_metric = st.slider("X points", min_value=25, max_value=400, value=160)
 
-        c3, c4 = st.columns(2)
-        with c3:
-            x_min = st.number_input("X min", value=50.0, step=1.0)
-        with c4:
-            x_max = st.number_input("X max", value=150.0, step=1.0)
+        c7, c8 = st.columns(2)
+        with c7:
+            x_min_metric = st.number_input("X min", value=50.0, step=1.0)
+        with c8:
+            x_max_metric = st.number_input("X max", value=150.0, step=1.0)
 
         if mode == "2D heatmap":
-            st.markdown("---")
-            c5, c6 = st.columns(2)
-            with c5:
-                y_var = st.selectbox("Y variable", [v for v in VARS_ALL if v != x_var], index=0)
-            with c6:
-                n2 = st.slider("Y points", min_value=20, max_value=250, value=80)
+            remaining_targets = [v for v in plot_targets if v != x_var]
+            c9, c10 = st.columns(2)
+            with c9:
+                y_var = st.selectbox("Y variable", remaining_targets, index=0)
+            with c10:
+                n2 = st.slider("Y points", min_value=20, max_value=250, value=90)
 
-            c7, c8 = st.columns(2)
-            with c7:
-                y_min_default = 0.05 if y_var in {"sigma", "T"} else 50.0
-                y_min = st.number_input("Y min", value=y_min_default, step=0.01, format="%.4f")
-            with c8:
-                y_max_default = 0.60 if y_var in {"sigma", "T"} else 150.0
-                y_max = st.number_input("Y max", value=y_max_default, step=0.01, format="%.4f")
+            c11, c12 = st.columns(2)
+            with c11:
+                y_min = st.number_input("Y min", value=0.05 if "T" in y_var or y_var == "sigma" else 50.0, step=0.01, format="%.4f")
+            with c12:
+                y_max = st.number_input("Y max", value=0.60 if "T" in y_var or y_var == "sigma" else 150.0, step=0.01, format="%.4f")
         else:
             y_var = None
             y_min = None
             y_max = None
             n2 = None
 
+    with st.expander("Payoff plot", expanded=True):
+        payoff_x_min = st.number_input("Payoff spot min", value=50.0, step=1.0)
+        payoff_x_max = st.number_input("Payoff spot max", value=150.0, step=1.0)
+        payoff_n = st.slider("Payoff points", min_value=25, max_value=500, value=220)
+        show_gross = st.checkbox("Show gross payoff", value=True)
+        show_pnl = st.checkbox("Show net P&L (subtract premium)", value=True)
+
     st.markdown("---")
-    st.caption("Tip: portfolio Greeks add linearly across legs.")
+    st.caption("Tip: choose leg-specific variables like `leg_2_K (...)` to vary only one option leg.")
 
 
-# Base market + KPIs
+# =========================================================
+# Base valuation + exposures
+# =========================================================
+portfolio_legs = copy.deepcopy(st.session_state.portfolio_legs)
 base_market = Market(S=float(S), r=float(r), sigma=float(sigma), q=float(q))
-price = portfolio_metric("price", portfolio_legs, base_market)
-gval = portfolio_metric(greek_key, portfolio_legs, base_market) if greek_key != "price" else price
+portfolio_price = portfolio_metric("price", portfolio_legs, base_market)
+
+exposure_rows: list[dict[str, Any]] = []
+for metric in METRICS_ALL:
+    exposure_rows.append(
+        {
+            "Metric": metric,
+            "Value": portfolio_metric(metric, portfolio_legs, base_market),
+        }
+    )
+
+exposure_df = pd.DataFrame(exposure_rows)
+
+
+# =========================================================
+# Top KPIs
+# =========================================================
+primary_metric_val = portfolio_metric(greek_key, portfolio_legs, base_market)
 
 k1, k2, k3, k4, k5 = st.columns([1.2, 1.2, 1, 1, 1])
-k1.metric("Portfolio Price", f"{price:.6f}")
-k2.metric(greek_key, f"{gval:.6f}")
+k1.metric("Portfolio Price", f"{portfolio_price:.6f}")
+k2.metric(greek_key, f"{primary_metric_val:.6f}")
 k3.metric("S", f"{S:.4f}")
 k4.metric("σ", f"{sigma:.4f}")
 k5.metric("r", f"{r:.4f}")
 
 st.divider()
 
-# Plot area
-plot_col, info_col = st.columns([3.2, 1.2], gap="large")
 
-with plot_col:
-    with st.spinner("Computing grid..."):
-        xs, ys, Z = compute_grid(
-            greek_key=greek_key,
-            portfolio_legs=portfolio_legs,
-            S=float(S),
-            sigma=float(sigma),
-            r=float(r),
-            q=float(q),
-            mode=mode,
-            x_var=x_var,
-            x_min=float(x_min),
-            x_max=float(x_max),
-            n=int(n),
-            y_var=y_var,
-            y_min=None if y_min is None else float(y_min),
-            y_max=None if y_max is None else float(y_max),
-            n2=None if n2 is None else int(n2),
-        )
+# =========================================================
+# Main layout
+# =========================================================
+left_col, right_col = st.columns([3.3, 1.35], gap="large")
 
-    if mode == "1D line":
-        fig = go.Figure()
-        fig.add_trace(
-            go.Scatter(
-                x=xs,
-                y=ys,
-                mode="lines",
-                name=greek_key,
-                hovertemplate=f"{x_var}=%{{x:.6f}}<br>{greek_key}=%{{y:.6f}}<extra></extra>",
+with left_col:
+    tab_metric, tab_payoff = st.tabs(["Sensitivity", "Payoff at Expiry"])
+
+    with tab_metric:
+        with st.spinner("Computing sensitivity grid..."):
+            xs, ys, Z = compute_metric_grid(
+                greek_key=greek_key,
+                portfolio_legs=portfolio_legs,
+                S=float(S),
+                sigma=float(sigma),
+                r=float(r),
+                q=float(q),
+                mode=mode,
+                x_var=x_var,
+                x_min=float(x_min_metric),
+                x_max=float(x_max_metric),
+                n=int(n_metric),
+                y_var=y_var,
+                y_min=None if y_min is None else float(y_min),
+                y_max=None if y_max is None else float(y_max),
+                n2=None if n2 is None else int(n2),
             )
-        )
-        fig.update_layout(
-            title=f"Portfolio {greek_key} vs {x_var}",
-            xaxis_title=x_var,
-            yaxis_title=greek_key,
+
+        if mode == "1D line":
+            fig_metric = go.Figure()
+            fig_metric.add_trace(
+                go.Scatter(
+                    x=xs,
+                    y=ys,
+                    mode="lines",
+                    name=greek_key,
+                    hovertemplate=f"{x_var}=%{{x:.6f}}<br>{greek_key}=%{{y:.6f}}<extra></extra>",
+                )
+            )
+            fig_metric.update_layout(
+                title=f"Portfolio {greek_key} vs {x_var}",
+                xaxis_title=x_var,
+                yaxis_title=greek_key,
+                hovermode="x",
+                margin=dict(l=10, r=10, t=50, b=10),
+            )
+            fig_metric.update_xaxes(showgrid=True)
+            fig_metric.update_yaxes(showgrid=True)
+            st.plotly_chart(fig_metric, use_container_width=True, config={"scrollZoom": True})
+        else:
+            fig_metric = go.Figure(
+                data=go.Heatmap(
+                    x=xs,
+                    y=ys,
+                    z=Z,
+                    colorbar=dict(title=greek_key),
+                    hovertemplate=f"{x_var}=%{{x:.6f}}<br>{y_var}=%{{y:.6f}}<br>{greek_key}=%{{z:.6f}}<extra></extra>",
+                )
+            )
+            fig_metric.update_layout(
+                title=f"Portfolio {greek_key} heatmap",
+                xaxis_title=x_var,
+                yaxis_title=y_var,
+                margin=dict(l=10, r=10, t=50, b=10),
+            )
+            fig_metric.update_xaxes(showgrid=True)
+            fig_metric.update_yaxes(showgrid=True)
+            st.plotly_chart(fig_metric, use_container_width=True, config={"scrollZoom": True})
+
+    with tab_payoff:
+        with st.spinner("Computing payoff curve..."):
+            pxs, gross_payoff, net_pnl = compute_payoff_curve(
+                portfolio_legs=portfolio_legs,
+                x_min=float(payoff_x_min),
+                x_max=float(payoff_x_max),
+                n=int(payoff_n),
+                premium=float(portfolio_price),
+            )
+
+        fig_payoff = go.Figure()
+        if show_gross:
+            fig_payoff.add_trace(
+                go.Scatter(
+                    x=pxs,
+                    y=gross_payoff,
+                    mode="lines",
+                    name="Gross payoff",
+                    hovertemplate="Spot=%{x:.6f}<br>Gross payoff=%{y:.6f}<extra></extra>",
+                )
+            )
+        if show_pnl:
+            fig_payoff.add_trace(
+                go.Scatter(
+                    x=pxs,
+                    y=net_pnl,
+                    mode="lines",
+                    name="Net P&L",
+                    hovertemplate="Spot=%{x:.6f}<br>Net P&L=%{y:.6f}<extra></extra>",
+                )
+            )
+
+        fig_payoff.add_hline(y=0.0)
+        fig_payoff.update_layout(
+            title="Portfolio payoff at expiry",
+            xaxis_title="Spot at expiry",
+            yaxis_title="Value",
             hovermode="x",
             margin=dict(l=10, r=10, t=50, b=10),
         )
-        fig.update_xaxes(showgrid=True)
-        fig.update_yaxes(showgrid=True)
-        st.plotly_chart(fig, use_container_width=True, config={"scrollZoom": True})
+        fig_payoff.update_xaxes(showgrid=True)
+        fig_payoff.update_yaxes(showgrid=True)
+        st.plotly_chart(fig_payoff, use_container_width=True, config={"scrollZoom": True})
 
-    else:
-        fig = go.Figure(
-            data=go.Heatmap(
-                x=xs,
-                y=ys,
-                z=Z,
-                colorbar=dict(title=greek_key),
-                hovertemplate=f"{x_var}=%{{x:.6f}}<br>{y_var}=%{{y:.6f}}<br>{greek_key}=%{{z:.6f}}<extra></extra>",
-            )
-        )
-        fig.update_layout(
-            title=f"Portfolio {greek_key} heatmap",
-            xaxis_title=x_var,
-            yaxis_title=y_var,
-            margin=dict(l=10, r=10, t=50, b=10),
-        )
-        fig.update_xaxes(showgrid=True)
-        fig.update_yaxes(showgrid=True)
-        st.plotly_chart(fig, use_container_width=True, config={"scrollZoom": True})
-
-
-with info_col:
+with right_col:
     st.subheader("Snapshot")
 
-    st.write("**Portfolio**")
+    st.write("**Portfolio legs**")
     portfolio_lines = []
     for i, leg in enumerate(portfolio_legs, start=1):
+        name = leg.get("name", f"Leg {i}")
         if leg["type"] == "stock":
-            portfolio_lines.append(f"{i}. {leg['qty']:+.2f} x stock")
+            portfolio_lines.append(f"{i}. {name}: {leg['qty']:+.2f} x stock")
         else:
             portfolio_lines.append(
-                f"{i}. {leg['qty']:+.2f} x {leg['type']}  K={leg['K']:.4f}  T={leg['T']:.6f}"
+                f"{i}. {name}: {leg['qty']:+.2f} x {leg['type']} | "
+                f"K={float(leg['K']):.4f} | T={float(leg['T']):.6f}"
             )
     st.code("\n".join(portfolio_lines), language="text")
 
     st.write("**Market**")
-    st.code(f"S={S:.4f}\nσ={sigma:.6f}\nr={r:.6f}\nq={q:.6f}", language="text")
+    st.code(
+        f"S={float(S):.4f}\n"
+        f"σ={float(sigma):.6f}\n"
+        f"r={float(r):.6f}\n"
+        f"q={float(q):.6f}",
+        language="text",
+    )
 
-    st.write("**Plot**")
-    if mode == "1D line":
-        st.code(f"{greek_key} vs {x_var}\n[{x_min:.4f}, {x_max:.4f}]  ({n} pts)", language="text")
-    else:
-        st.code(
-            f"{greek_key} vs ({x_var}, {y_var})\n"
-            f"x:[{x_min:.4f}, {x_max:.4f}] ({n} pts)\n"
-            f"y:[{y_min:.4f}, {y_max:.4f}] ({n2} pts)",
-            language="text",
-        )
+    st.write("**Exposure table**")
+    st.dataframe(
+        exposure_df.style.format({"Value": "{:.6f}"}),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    st.write("**Quick notes**")
+    maturity_list = ", ".join(f"{t:.4f}" for t in unique_maturities(portfolio_legs))
+    st.code(
+        f"Active maturities: {maturity_list}\n"
+        f"Metric plot: {greek_key}\n"
+        f"X variable: {x_var}\n"
+        f"Mode: {mode}",
+        language="text",
+    )
 
 
 with st.expander("Notes / gotchas", expanded=False):
     st.markdown(
         """
         - Portfolio value and Greeks are computed as the **sum across all legs**.
-        - `stock` supports `price` and `delta=1`; other stock Greeks are set to 0 here.
-        - When you plot **K** or **T**, the app currently applies that same K/T to **all option legs**.
-        - **Theta convention:** `theta = -dPrice/dT` (market convention).
-        - All option metrics here use **finite differences**.
+        - `stock` supports `price` and `delta = 1`; other stock Greeks are set to `0` in this app.
+        - You can now vary **one specific option leg** by choosing plot variables like `leg_2_K (...)` or `leg_3_T (...)`.
+        - The payoff tab shows:
+          - **Gross payoff at expiry**
+          - **Net P&L**, computed as payoff minus the current Black–Scholes premium of the portfolio
+        - Negative quantities represent **short positions**.
+        - All option metrics use your existing **Black–Scholes + finite-difference Greek engine**.
         """
     )
