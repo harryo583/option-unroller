@@ -101,7 +101,7 @@ def metric_now(greek_key: str, c: Contract, m: Market) -> float:
 # Sidebar controls
 with st.sidebar:
     st.subheader("Inputs")
-
+    
     with st.expander("Contract", expanded=True):
         option_type = st.segmented_control("Type", options=["call", "put"], default="call")
         K = st.number_input("Strike (K)", value=100.0, min_value=0.0001, step=1.0)

@@ -194,9 +194,9 @@ class BlackScholes:
                 return new_f
 
             f = wrap(f, var_name, order)
-
+        
         return float(f(base_state))
-
+    
     # Public API
     def metric(self, greek: Greek, c: Contract, m: Market) -> float:
         """
