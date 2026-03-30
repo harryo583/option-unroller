@@ -629,16 +629,15 @@ with right_col:
     )
 
 
-with st.expander("Notes / gotchas", expanded=False):
+with st.expander("Notes", expanded=False):
     st.markdown(
         """
         - Portfolio value and Greeks are computed as the **sum across all legs**.
         - `stock` supports `price` and `delta = 1`; other stock Greeks are set to `0` in this app.
-        - You can now vary **one specific option leg** by choosing plot variables like `leg_2_K (...)` or `leg_3_T (...)`.
+        - You can vary **one specific option leg** by choosing plot variables like `leg_2_K (...)` or `leg_3_T (...)`.
         - The payoff tab shows:
           - **Gross payoff at expiry**
           - **Net P&L**, computed as payoff minus the current Black–Scholes premium of the portfolio
         - Negative quantities represent **short positions**.
-        - All option metrics use your existing **Black–Scholes + finite-difference Greek engine**.
         """
     )
