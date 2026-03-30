@@ -147,9 +147,30 @@ class BlackScholes:
         price_from_state: Callable[[Dict[str, float]], float],
     ) -> float:
         """
-        Applies derivatives in sequence by wrapping the function.
-        Each step creates a new function that, when called on a state, computes the 
-        requested partial derivative wrt one variable.
+        Computes mixed partial derivatives of the pricing function using finite differences.
+
+        This function applies a sequence of derivatives specified by `spec` by
+        iteratively wrapping the pricing function. Each step transforms the function
+        into its partial derivative with respect to a given variable.
+
+        Parameters
+        ----------
+        base_state: dict of input variables representing the point at which the derivative is evaluated.
+        spec (DerivativeSpec): list of (variable, order) pairs specifying the derivative.
+            For example:
+                [("S", 1)] -> first derivative w.r.t. S (Delta)
+                [("S", 2)] -> second derivative w.r.t. S (Gamma)
+                [("S", 1), ("sigma", 1)]  -> mixed derivative (Vanna)
+        price_from_state: function that maps a state dictionary to a scalar price value.
+
+        Returns
+        -------
+        Floating point numerical approximation of the requested mixed partial derivative.
+
+        Notes
+        -----
+        - Derivatives are applied sequentially in the order given by `spec`.
+        - Functions are repeatedly wrapped so that derivatives are computed without explicit formulas.
         """
 
         f = price_from_state
@@ -178,6 +199,26 @@ class BlackScholes:
 
     # Public API
     def metric(self, greek: Greek, c: Contract, m: Market) -> float:
+        """
+        Computes the value of a specified Greek for a given contract and market.
+        It supports arbitrary-order and mixed partial derivatives.
+
+        Parameters
+        ----------
+        greek: object defining the Greek to compute, including its derivative specification
+        c: contract specification (strike, time to expiry, option type).
+        m: market data (spot, volatility, interest rate, dividend yield).
+
+        Returns
+        -------
+        Numerical value of the requested Greek.
+
+        Notes
+        -----
+        - If `greek.theta_market` is True, it returns -dP/dT instead of dP/dT).
+        - For mixed derivatives involving time (T), the sign is flipped if the
+            total order of differentiation with respect to T is odd.
+        """
         base = self._base_state(c, m)
         opt = c.option_type.lower().strip()
 
@@ -196,6 +237,24 @@ class BlackScholes:
         return float(val)
 
     def metric_by_key(self, key: str, c: Contract, m: Market) -> float:
+        """
+        Computes a Greek by its string identifier - a convenience wrapper 
+        around `metric` that allows users to request a Greek using its name
+        
+        Parameters
+        ----------
+        key: string name of the Greek (case-insensitive), e.g. "delta", "vega", "theta".
+        c: contract specification.
+        m: market data.
+
+        Returns
+        -------
+        Numerical value of the requested Greek.
+
+        Raises
+        ------
+        KeyError if the provided key does not correspond to a known Greek.
+        """
         key = key.strip().lower()
         gmap = {g.key.lower(): g for g in self.greeks()}
         if key not in gmap:
