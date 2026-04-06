@@ -4,9 +4,9 @@
 
 An interactive **Black–Scholes visualizer** built with **Streamlit** for exploring option prices, payoffs, and Greeks.
 
-This project uses a **finite-difference engine** to compute numerical derivatives of the Black–Scholes price with respect to model inputs such as spot, volatility, time to expiry, and rates. Because Greeks are represented as derivative specifications, the engine can handle not only standard first-order Greeks but also **higher order mixed partials** such as Vanna, Volga, Speed etc.
+This project uses a **finite-difference engine** to compute the Greeks of a given option portfolio under the Black–Scholes model. It handles not only standard first-order Greeks but also **higher order mixed partials** such as Vanna, Volga, and Speed.
 
-This app also supports **arbitrary stock/option portfolios**, allowing users to, for instance, visualize how the vega of a call ladder evolves over time and how that changes under various market conditions.
+Users can plot these Greeks against one or two chosen market variables and see how the curve or surface changes with changing market conditions.
 
 It is useful as an **educational tool** for students, researchers, and quant traders new to the industry.
 
@@ -14,22 +14,9 @@ It is useful as an **educational tool** for students, researchers, and quant tra
 
 ---
 
-## Features
-
-- Build arbitrary portfolios of stock and options
-- Adjustable market parameters:
-  - spot price `S`
-  - volatility `σ`
-  - risk-free rate `r`
-  - dividend yield `q`
-- Plot sensitivities as:
-  - **1D line plots**
-  - **2D heatmaps**
-- Interactive Streamlit UI with exposure table and portfolio snapshot
-
----
-
 ## Greeks Supported
+
+![Demo](images/3d_demo.png)
 
 Because option price is a function of multiple variables,
 
