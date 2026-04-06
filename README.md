@@ -16,8 +16,6 @@ It is useful as an **educational tool** for students, researchers, and quant tra
 
 ## Greeks Supported
 
-![Demo](images/3d_demo.png)
-
 Because option price is a function of multiple variables,
 
 $$
@@ -50,6 +48,8 @@ More generally, the finite-difference engine can evaluate **arbitrary mixed part
 ## Technical Overview
 
 This section provides a high-level overview of the core functions and how the system computes option prices and Greeks.
+
+![Demo](images/3d_demo.png)
 
 ### Core Pricing Engine (`pricing/black_scholes.py`)
 
