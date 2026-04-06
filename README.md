@@ -10,41 +10,26 @@ This app also supports **arbitrary stock/option portfolios**, allowing users to,
 
 It is useful as an **educational tool** for students, researchers, and quant traders new to the industry.
 
-![Demo](images/demo.png)
+![Demo](images/straddle_demo.png)
 
 ---
 
 ## Features
 
-- Build arbitrary portfolios of:
-  - stock
-  - options
+- Build arbitrary portfolios of stock and options
 - Adjustable market parameters:
   - spot price `S`
   - volatility `σ`
   - risk-free rate `r`
   - dividend yield `q`
-- Compute portfolio-wide:
-  - price
-  - payoff at expiry
-  - Greeks
 - Plot sensitivities as:
   - **1D line plots**
   - **2D heatmaps**
-- Vary either:
-  - global market variables
-  - specific leg parameters such as strike `K` or expiry `T`
-- Includes preset strategies such as:
-  - Covered Call
-  - Bull Call Spread
-  - Long Straddle
-  - Long Strangle
-  - Iron Condor
 - Interactive Streamlit UI with exposure table and portfolio snapshot
 
 ---
 
-## Example Greeks Supported
+## Greeks Supported
 
 Because option price is a function of multiple variables,
 
