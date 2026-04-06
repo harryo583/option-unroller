@@ -395,7 +395,7 @@ with st.sidebar:
             METRICS_ALL,
             index=METRICS_ALL.index("delta") if "delta" in METRICS_ALL else 0,
         )
-        mode = st.segmented_control("Mode", options=["1D line", "2D heatmap"], default="1D line")
+        mode = st.segmented_control("Mode", options=["1D line", "3D surface"], default="1D line")
 
         c5, c6 = st.columns(2)
         with c5:
@@ -409,7 +409,7 @@ with st.sidebar:
         with c8:
             x_max_metric = st.number_input("X max", value=150.0, step=1.0)
 
-        if mode == "2D heatmap":
+        if mode == "3D surface":
             remaining_targets = [v for v in plot_targets if v != x_var]
             c9, c10 = st.columns(2)
             with c9:
@@ -524,7 +524,7 @@ with left_col:
             st.plotly_chart(fig_metric, use_container_width=True, config={"scrollZoom": True})
         else:
             fig_metric = go.Figure(
-                data=go.Heatmap(
+                data=go.Surface(
                     x=xs,
                     y=ys,
                     z=Z,
@@ -533,13 +533,17 @@ with left_col:
                 )
             )
             fig_metric.update_layout(
-                title=f"Portfolio {greek_key} heatmap",
-                xaxis_title=x_var,
-                yaxis_title=y_var,
+                title=f"Portfolio {greek_key} — 3D surface",
+                scene=dict(
+                    xaxis_title=x_var,
+                    yaxis_title=y_var,
+                    zaxis_title=greek_key,
+                    xaxis=dict(showgrid=True),
+                    yaxis=dict(showgrid=True),
+                    zaxis=dict(showgrid=True),
+                ),
                 margin=dict(l=10, r=10, t=50, b=10),
             )
-            fig_metric.update_xaxes(showgrid=True)
-            fig_metric.update_yaxes(showgrid=True)
             st.plotly_chart(fig_metric, use_container_width=True, config={"scrollZoom": True})
 
     with tab_payoff:
