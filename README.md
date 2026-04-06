@@ -6,7 +6,7 @@ An interactive **Black–Scholes visualizer** built with **Streamlit** for explo
 
 This project uses a **finite-difference engine** to compute numerical derivatives of the Black–Scholes price with respect to model inputs such as spot, volatility, time to expiry, and rates. Because Greeks are represented as derivative specifications, the engine can handle not only standard first-order Greeks but also **higher order mixed partials** such as Vanna, Volga, Speed etc.
 
-![Demo](assets/demo.png)
+![Demo](images/demo.png)
 
 This app also supports **arbitrary stock/option portfolios**, allowing users to, for instance, visualize how the vega of a call ladder evolves over time and how that changes under various market conditions.
 
