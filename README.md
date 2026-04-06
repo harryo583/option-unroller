@@ -1,12 +1,12 @@
 # Option Greeks Plotter
 
-An interactive **Black–Scholes portfolio visualizer** built with **Streamlit** for exploring option prices, payoffs, and Greeks.
+An interactive **Black–Scholes visualizer** built with **Streamlit** for exploring option prices, payoffs, and Greeks.
 
-This project uses a **finite-difference engine** to compute numerical derivatives of the Black–Scholes price with respect to model inputs such as spot, volatility, time to expiry, and rates. Because Greeks are represented as derivative specifications rather than hardcoded formulas, the engine can handle not only standard Greeks like Delta and Gamma, but also **mixed partials and higher-order Greeks** such as Vanna, Volga, Speed, Color, Ultima, and Zomma.
+This project uses a **finite-difference engine** to compute numerical derivatives of the Black–Scholes price with respect to model inputs such as spot, volatility, time to expiry, and rates. Because Greeks are represented as derivative specifications, the engine can handle not only standard first-order Greeks but also **higher order mixed partials** such as Vanna, Volga, Speed etc.
 
-Unlike a simple single-option plotter, this app also supports **arbitrary stock/option portfolios**, allowing users to combine multiple legs and analyze the portfolio’s aggregate sensitivities and payoff profile.
+This app also supports **arbitrary stock/option portfolios**, allowing users to, for instance, visualize how the vega of a call ladder evolves over time and how that changes under various market conditions.
 
-It is useful both as an **educational tool** for developing intuition and as a **training tool** for interview prep, options coursework, or derivatives research.
+It is useful as an **educational tool** for students, researchers, and quant traders new to the industry.
 
 ---
 
@@ -14,8 +14,7 @@ It is useful both as an **educational tool** for developing intuition and as a *
 
 - Build arbitrary portfolios of:
   - stock
-  - calls
-  - puts
+  - options
 - Adjustable market parameters:
   - spot price `S`
   - volatility `σ`
@@ -49,7 +48,7 @@ $$
 P = P(S, \sigma, T, r, q, K)
 $$
 
-the engine can compute derivatives such as:
+the engine computes the following Greeks:
 
 | Greek | Definition |
 |------|-------------|
