@@ -185,7 +185,7 @@ def build_plot_targets(legs: list[dict[str, Any]]) -> list[str]:
     """
     Global market variables + per-leg K/T selectors.
     """
-    targets = ["S", "sigma", "r", "q"]
+    targets = ["S", "vol", "r", "q"]
     for i, leg in enumerate(legs):
         name = leg.get("name", f"Leg {i + 1}") or f"Leg {i + 1}"
         if leg["type"] != "stock":
@@ -208,7 +208,7 @@ def apply_plot_variable(
 
     if var == "S":
         new_market = market.with_(S=float(value))
-    elif var == "sigma":
+    elif var == "vol":
         new_market = market.with_(sigma=max(float(value), 0.0))
     elif var == "r":
         new_market = market.with_(r=float(value))
@@ -419,9 +419,9 @@ with st.sidebar:
 
             c11, c12 = st.columns(2)
             with c11:
-                y_min = st.number_input("Y min", value=0.05 if "T" in y_var or y_var == "sigma" else 50.0, step=0.01, format="%.4f")
+                y_min = st.number_input("Y min", value=0.05 if "T" in y_var or y_var == "vol" else 50.0, step=0.01, format="%.4f")
             with c12:
-                y_max = st.number_input("Y max", value=0.60 if "T" in y_var or y_var == "sigma" else 150.0, step=0.01, format="%.4f")
+                y_max = st.number_input("Y max", value=0.60 if "T" in y_var or y_var == "vol" else 150.0, step=0.01, format="%.4f")
         else:
             y_var = None
             y_min = None
@@ -467,7 +467,7 @@ k1, k2, k3, k4, k5 = st.columns([1.2, 1.2, 1, 1, 1])
 k1.metric("Portfolio Price", f"{portfolio_price:.6f}")
 k2.metric(greek_key, f"{primary_metric_val:.6f}")
 k3.metric("S", f"{S:.4f}")
-k4.metric("σ", f"{sigma:.4f}")
+k4.metric("vol", f"{sigma:.4f}")
 k5.metric("r", f"{r:.4f}")
 
 st.divider()
@@ -609,7 +609,7 @@ with right_col:
     st.write("**Market**")
     st.code(
         f"S={float(S):.4f}\n"
-        f"σ={float(sigma):.6f}\n"
+        f"vol={float(sigma):.6f}\n"
         f"r={float(r):.6f}\n"
         f"q={float(q):.6f}",
         language="text",
