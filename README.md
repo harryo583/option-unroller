@@ -1,5 +1,7 @@
 # Option Greeks Plotter
 
+[![Open App](https://img.shields.io/badge/Open%20App-Streamlit-ff4b4b?style=for-the-badge&logo=streamlit&logoColor=white)](https://option-unroller.streamlit.app/)
+
 An interactive **Black–Scholes visualizer** built with **Streamlit** for exploring option prices, payoffs, and Greeks.
 
 This project uses a **finite-difference engine** to compute numerical derivatives of the Black–Scholes price with respect to model inputs such as spot, volatility, time to expiry, and rates. Because Greeks are represented as derivative specifications, the engine can handle not only standard first-order Greeks but also **higher order mixed partials** such as Vanna, Volga, Speed etc.
@@ -180,7 +182,7 @@ portfolio_metric = Σ leg_metric(leg_i)
 
 ---
 
-## Installation
+## Local Installation
 
 Clone the repository and install the dependencies:
 
